@@ -14,13 +14,10 @@ class ReferenceSeeder extends Seeder
     public function run(): void
     {
         $agents = [
-            ['name' => 'Ardian', 'email' => 'ardian@helpdesk.local'],
-            ['name' => 'Mulyana', 'email' => 'mulyana@helpdesk.local'],
-            ['name' => 'Rizvan', 'email' => 'rizvan@helpdesk.local'],
-            ['name' => 'Supardi', 'email' => 'supardi@helpdesk.local'],
-            ['name' => 'Maulana', 'email' => 'maulana@helpdesk.local'],
-            ['name' => 'Rangga', 'email' => 'rangga@helpdesk.local'],
-            ['name' => 'Taufik', 'email' => 'taufik@helpdesk.local'],
+            ['name' => 'Ahmad Mulyana', 'email' => 'mulyana@pemadam.jakarta.go.id'],
+            ['name' => 'Rizvan Primadita', 'email' => 'rizvan@pemadam.jakarta.go.id'],
+            ['name' => 'Supardi Putra M', 'email' => 'supardi@pemadam.jakarta.go.id'],
+            ['name' => 'M. Taufik Hidayat', 'email' => 'taufik@pemadam.jakarta.go.id'],
         ];
 
         foreach ($agents as $agent) {

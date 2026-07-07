@@ -58,6 +58,10 @@ export const router = new Proxy(originalRouter, {
                     const visitOptions = {
                         ...options,
                         method: 'post',
+                        headers: {
+                            ...(options?.headers ?? {}),
+                            'X-HTTP-Method-Override': method,
+                        },
                         data: {
                             ...(options?.data ?? {}),
                             _method: method,
@@ -80,7 +84,14 @@ export const router = new Proxy(originalRouter, {
                     ...(data ?? {}),
                     _method: 'PUT',
                 };
-                return target.post(prefixUrl(url), spoofedData, options);
+                const spoofedOptions = {
+                    ...options,
+                    headers: {
+                        ...(options?.headers ?? {}),
+                        'X-HTTP-Method-Override': 'PUT',
+                    }
+                };
+                return target.post(prefixUrl(url), spoofedData, spoofedOptions);
             };
         }
         if (prop === 'patch') {
@@ -89,7 +100,14 @@ export const router = new Proxy(originalRouter, {
                     ...(data ?? {}),
                     _method: 'PATCH',
                 };
-                return target.post(prefixUrl(url), spoofedData, options);
+                const spoofedOptions = {
+                    ...options,
+                    headers: {
+                        ...(options?.headers ?? {}),
+                        'X-HTTP-Method-Override': 'PATCH',
+                    }
+                };
+                return target.post(prefixUrl(url), spoofedData, spoofedOptions);
             };
         }
         if (prop === 'delete') {
@@ -99,7 +117,14 @@ export const router = new Proxy(originalRouter, {
                     _method: 'DELETE',
                 };
                 const { data: _, ...restOptions } = options ?? {};
-                return target.post(prefixUrl(url), data, restOptions);
+                const spoofedOptions = {
+                    ...restOptions,
+                    headers: {
+                        ...(options?.headers ?? {}),
+                        'X-HTTP-Method-Override': 'DELETE',
+                    }
+                };
+                return target.post(prefixUrl(url), data, spoofedOptions);
             };
         }
         
@@ -119,6 +144,10 @@ export function useForm(...args: any[]) {
             const originalTransform = options?.transform || ((data: any) => data);
             options = {
                 ...options,
+                headers: {
+                    ...(options?.headers ?? {}),
+                    'X-HTTP-Method-Override': upperMethod,
+                },
                 transform: (data: any) => {
                     return {
                         ...originalTransform(data),

@@ -1,388 +1,919 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { dashboard, login } from '@/routes';
-import { register } from '@/routes';
+import { dashboard, login, register } from '@/routes';
+import { useAppearance } from '@/hooks/use-appearance';
+import { cn, toAsset } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import {
+    Search,
+    ShieldCheck,
+    CheckCircle2,
+    AlertCircle,
+    Clock,
+    Database,
+    UserCheck,
+    HelpCircle,
+    Phone,
+    Mail,
+    MapPin,
+    ExternalLink,
+    Menu,
+    X,
+    Sun,
+    Moon,
+    Monitor,
+    Laptop,
+    Network,
+    BookOpen,
+    Key,
+    Info,
+    RefreshCw,
+    Send,
+    ArrowRight,
+    ChevronDown,
+    Building2,
+    MessageSquare,
+    AlertTriangle,
+    Award
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+
+// Define Interface for mock articles
+interface Article {
+    id: string;
+    title: string;
+    category: 'jaringan' | 'aplikasi' | 'hardware' | 'data';
+    summary: string;
+    content: string;
+}
+
+// Define Interface for Mock Ticket
+interface MockTicket {
+    id: string;
+    title: string;
+    type: 'support' | 'technical';
+    status: 'OPEN' | 'ON PROGRESS' | 'DONE';
+    reporter: string;
+    agent: string;
+    date: string;
+    description: string;
+    updates: string[];
+}
 
 export default function Welcome() {
     const { auth } = usePage().props;
+    const { appearance, updateAppearance } = useAppearance();
+
+    // Responsive Mobile Menu State
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Interactive Search State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+
+    // FAQ Tab & Accordion States
+    const [activeFaqTab, setActiveFaqTab] = useState<'all' | 'jaringan' | 'aplikasi' | 'hardware'>('all');
+    const [expandedFaqId, setExpandedFaqId] = useState<number | null>(null);
+
+    // Ticket Lookup States
+    const [lookupTicketId, setLookupTicketId] = useState('');
+    const [searchedTicket, setSearchedTicket] = useState<MockTicket | null>(null);
+    const [lookupExecuted, setLookupExecuted] = useState(false);
+
+    // Mock Help Center Articles Data
+    const mockArticles: Article[] = [
+        {
+            id: 'art-1',
+            title: 'Cara Menghubungkan Wifi Damkar Pos',
+            category: 'jaringan',
+            summary: 'Langkah menghubungkan perangkat Anda ke jaringan SSID DAMKAR_POS.',
+            content: 'Setiap pos pemadam dilengkapi SSID jaringan internal DAMKAR_POS. Untuk menyambung: (1) Aktifkan Wifi pada perangkat Anda, (2) Pilih SSID DAMKAR_POS, (3) Masukkan kredensial Akun Jasinfo Anda (username tanpa akhiran domain, dan password standar Anda), (4) Jika diminta sertifikat CA, pilih "Jangan Validasi" atau "No Validation". Hubungi tim Jasinfo di Pos atau Sudin jika akses tetap tertolak.'
+        },
+        {
+            id: 'art-2',
+            title: 'Solusi Error Kredensial Tidak Valid E-Satgas',
+            category: 'aplikasi',
+            summary: 'Troubleshooting kegagalan login di aplikasi absensi & tugas E-Satgas.',
+            content: 'Jika Anda menemui error "Kredensial Tidak Valid" saat login E-Satgas: (1) Pastikan Anda tidak menggunakan spasi di akhir username, (2) Lakukan sinkronisasi akun dengan login ulang terlebih dahulu di portal utama Helpdesk Jasinfo, (3) Hapus cache aplikasi E-Satgas di pengaturan ponsel Anda, (4) Jika masih bermasalah, gunakan fitur Reset Password di Portal Jasinfo atau hubungi admin bidang informasi.'
+        },
+        {
+            id: 'art-3',
+            title: 'Prosedur Pengajuan Reset Password SIAGA API',
+            category: 'aplikasi',
+            summary: 'Panduan memulihkan akun pengembang atau token akses SIAGA API.',
+            content: 'Untuk alasan keamanan, perubahan token/password SIAGA API harus melalui validasi. Anda dapat mengajukan permohonan dengan masuk ke Dashboard IT Helpdesk, pilih menu "Profil & Keamanan", klik "Kelola API Token", lalu klik "Minta Token Baru". Admin Jasinfo akan memvalidasi permohonan Anda dalam 5-15 menit.'
+        },
+        {
+            id: 'art-4',
+            title: 'Panduan Instalasi Printer & CCTV Pos Baru',
+            category: 'hardware',
+            summary: 'Petunjuk konfigurasi IP printer jaringan dan integrasi CCTV Pos Damkar.',
+            content: 'Setiap printer baru di pos damkar menggunakan alamat IP statis dalam subnet pos Anda (biasanya .50 atau .51). Konfigurasikan port TCP/IP di komputer Anda mengarah ke IP tersebut. Untuk CCTV, hubungkan kabel LAN ke switch pos bertanda tag "CCTV-Jasinfo", IP address kamera akan didistribusikan otomatis via DHCP, kemudian daftarkan Mac Address kamera ke admin Command Center untuk dipetakan ke layar monitor utama.'
+        },
+        {
+            id: 'art-5',
+            title: 'Pengajuan Permintaan Ekstraksi Data Laporan',
+            category: 'data',
+            summary: 'Prosedur meminta rekapitulasi data penyelamatan/pemadaman damkar.',
+            content: 'Permintaan data untuk keperluan dinas eksternal atau laporan pos/sudin dapat diajukan dengan membuat tiket baru tipe "Permintaan Layanan Data" di Dashboard. Lampirkan dokumen surat permohonan resmi dari unit pengaju. Data rekapitulasi berupa file Excel/CSV akan dikirimkan langsung ke email dinas Anda paling lambat 1 hari kerja setelah disetujui Kepala Bidang Jasinfo.'
+        }
+    ];
+
+    // Mock FAQs Data
+    const faqs = [
+        {
+            id: 1,
+            category: 'jaringan',
+            question: 'Bagaimana cara menyambungkan internet Pos Damkar yang terputus?',
+            answer: 'Pertama, periksa lampu indikator pada Router/Modem utama di Pos Anda. Jika lampu PON berkedip merah atau lampu internet mati, silakan restart modem dengan mencabut adaptor selama 10 detik lalu pasang kembali. Jika tetap mati setelah 5 menit, buat tiket Technical Support di portal ini dengan menyertakan foto modem.'
+        },
+        {
+            id: 2,
+            category: 'aplikasi',
+            question: 'Bagaimana cara mendaftarkan akun IT Helpdesk baru?',
+            answer: 'Setiap petugas aktif Damkar DKI Jakarta (PNS maupun PJLP) dapat mendaftar mandiri. Klik tombol "Register" di pojok kanan atas, masukkan NIP atau NIK PJLP Anda yang valid, masukkan email dinas/pribadi aktif, dan tentukan password Anda. Akun Anda akan aktif seketika dan dapat digunakan untuk melaporkan kendala.'
+        },
+        {
+            id: 3,
+            category: 'hardware',
+            question: 'Bagaimana melaporkan kerusakan komputer atau printer di Pos?',
+            answer: 'Masuk ke akun Helpdesk Anda, pilih "Buat Tiket Baru", lalu pilih kategori "Bantuan Teknis / Technical Support". Isi detail perangkat yang bermasalah (merek, tipe) serta keluhan yang dialami. Unggah foto kerusakan jika ada untuk mempercepat proses identifikasi oleh teknisi Jasinfo.'
+        },
+        {
+            id: 4,
+            category: 'jaringan',
+            question: 'Apakah tamu/instansi luar boleh menggunakan Wifi internal pos?',
+            answer: 'Jaringan Wifi DAMKAR_POS dikhususkan untuk operasional petugas damkar DKI Jakarta. Tamu/instansi luar dilarang menggunakan wifi operasional demi menjaga keamanan data taktis penyelamatan. Silakan gunakan jaringan hotspot publik jika tersedia di pos.'
+        },
+        {
+            id: 5,
+            category: 'aplikasi',
+            question: 'Siapa yang bisa dihubungi saat darurat sistem IT lumpuh?',
+            answer: 'Jika terjadi kendala kritis berskala luas (misalnya seluruh sistem absensi atau sistem dispatch Damkar One mati), Anda dapat menghubungi tim Jasinfo secara langsung melalui ekstensi 202 di telepon CC Damkar atau hubungi Hotline WhatsApp di +62 85119 995 113.'
+        }
+    ];
+
+    // Mock Ticket Database for quick lookup
+    const mockTicketsDb: Record<string, MockTicket> = {
+        'TKT-202607-0001': {
+            id: 'TKT-202607-0001',
+            title: 'Absensi E-Satgas Tidak Sinkron',
+            type: 'support',
+            status: 'DONE',
+            reporter: 'Seksi Operasi Jakarta Barat',
+            agent: 'Rizvan (Jasinfo)',
+            date: '2026-07-01',
+            description: 'Data absensi shift malam tgl 30 Juni di Pos Cengkareng tidak terkirim ke server pusat.',
+            updates: [
+                'Laporan kendala diterima oleh Bidang Jasinfo (08:30 WIB)',
+                'Dilakukan analisis konektivitas server database E-Satgas (09:15 WIB)',
+                'Sync manual dijalankan, data absensi 42 personel berhasil ditarik (10:00 WIB)',
+                'Masalah selesai. Tiket ditutup oleh Agen.'
+            ]
+        },
+        'TKT-202607-0002': {
+            id: 'TKT-202607-0002',
+            title: 'Wifi Pos Damkar Salemba Mati',
+            type: 'technical',
+            status: 'ON PROGRESS',
+            reporter: 'Kasi Sektor Johar Baru',
+            agent: 'Mulyana (Jasinfo)',
+            date: '2026-07-03',
+            description: 'Indikator internet modem Huawei di pos berkedip merah sejak kemarin malam. Petugas tidak bisa input laporan harian.',
+            updates: [
+                'Laporan kerusakan jaringan didaftarkan (10:15 WIB)',
+                'Koordinasi dengan pihak provider ISP untuk pengecekan jaringan luar (11:30 WIB)',
+                'Teknisi Jasinfo ditugaskan menuju Pos Salemba membawa router cadangan (14:00 WIB)'
+            ]
+        },
+        'TKT-202607-0003': {
+            id: 'TKT-202607-0003',
+            title: 'Permintaan Data Pemadaman Bulan Juni',
+            type: 'support',
+            status: 'OPEN',
+            reporter: 'Sekretariat Dinas',
+            agent: 'Menunggu Penugasan',
+            date: '2026-07-06',
+            description: 'Ekstraksi data rekapitulasi jumlah kejadian kebakaran dan penyelamatan penyelamatan di 5 wilayah kota bulan Juni 2026.',
+            updates: [
+                'Tiket masuk dan mengantri di sistem Jasinfo (14:30 WIB)',
+                'Menunggu persetujuan Kepala Bidang Jasinfo untuk proses query data.'
+            ]
+        }
+    };
+
+    // Real-time suggestions search logic
+    const filteredArticles = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        return mockArticles.filter(article =>
+            article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            article.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            article.category.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [searchQuery]);
+
+    // FAQ tab filter logic
+    const filteredFaqs = useMemo(() => {
+        if (activeFaqTab === 'all') return faqs;
+        return faqs.filter(faq => faq.category === activeFaqTab);
+    }, [activeFaqTab]);
+
+    // Handle quick ticket lookup
+    const handleTicketLookup = (e: React.FormEvent) => {
+        e.preventDefault();
+        const tid = lookupTicketId.trim().toUpperCase();
+        if (mockTicketsDb[tid]) {
+            setSearchedTicket(mockTicketsDb[tid]);
+        } else {
+            setSearchedTicket(null);
+        }
+        setLookupExecuted(true);
+    };
+
+    // Reset lookup state
+    const resetLookup = () => {
+        setLookupTicketId('');
+        setSearchedTicket(null);
+        setLookupExecuted(false);
+    };
 
     return (
         <>
-            <Head title="Welcome" />
-            <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]">
-                <header className="mb-6 w-full max-w-[335px] text-sm not-has-[nav]:hidden lg:max-w-4xl">
-                    <nav className="flex items-center justify-end gap-4">
-                        {auth.user ? (
-                            <Link
-                                href={dashboard()}
-                                className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+            <Head title="IT Helpdesk | Jasinfo Disgulkarmat" />
+            <div className="min-h-screen bg-neutral-50 text-neutral-900 transition-colors duration-300 dark:bg-[#0a0a0a] dark:text-neutral-100">
+
+                {/* Floating Navbar with Glassmorphism */}
+                <header className="sticky top-0 z-50 w-full border-b border-neutral-200/60 bg-white/80 backdrop-blur-md dark:border-neutral-800/60 dark:bg-[#0a0a0a]/80">
+                    <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+                        {/* Logo section */}
+                        <Link href="/" className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-500/10 p-1 shadow-inner dark:bg-red-500/20">
+                                <img
+                                    src={toAsset('/pampi-head.png')}
+                                    alt="Pampi Logo"
+                                    className="h-9 w-9 object-contain"
+                                    onError={(e) => {
+                                        // Fallback if image fails to load
+                                        (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-bold tracking-tight text-neutral-800 dark:text-neutral-100 sm:text-base">
+                                    Jasinfo IT Helpdesk
+                                </span>
+                                <span className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                                    Disgulkarmat Provinsi DKI Jakarta
+                                </span>
+                            </div>
+                        </Link>
+
+                        {/* Navigation links - Desktop */}
+                        <nav className="hidden items-center gap-6 md:flex">
+                            <a href="#features" className="text-sm font-medium text-neutral-600 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400">
+                                Layanan
+                            </a>
+                            <a href="#status" className="text-sm font-medium text-neutral-600 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400">
+                                Status Sistem
+                            </a>
+                            <a href="#faq" className="text-sm font-medium text-neutral-600 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400">
+                                FAQ
+                            </a>
+                            <a href="#contact" className="text-sm font-medium text-neutral-600 hover:text-red-500 dark:text-neutral-400 dark:hover:text-red-400">
+                                Kontak
+                            </a>
+                        </nav>
+
+                        {/* Actions (Login/Register & Dark Mode) */}
+                        <div className="hidden items-center gap-3 md:flex">
+                            {/* Theme Switcher Button */}
+                            <button
+                                onClick={() => updateAppearance(appearance === 'dark' ? 'light' : 'dark')}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+                                title="Toggle Theme"
                             >
-                                Dashboard
-                            </Link>
-                        ) : (
-                            <>
-                                <Link
-                                    href={login()}
-                                    className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
-                                >
-                                    Log in
+                                {appearance === 'dark' ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
+                            </button>
+
+                            {/* Authentication Links */}
+                            {auth.user ? (
+                                <Link href={dashboard()}>
+                                    <Button className="h-9 gap-1.5 bg-red-600 font-semibold hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white">
+                                        Dashboard <ArrowRight className="h-4 w-4" />
+                                    </Button>
                                 </Link>
-                                <Link
-                                    href={register()}
-                                    className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                            ) : (
+                                <>
+                                    <Link href={login()}>
+                                        <Button variant="ghost" className="h-9 font-medium text-neutral-700 dark:text-neutral-300">
+                                            Masuk
+                                        </Button>
+                                    </Link>
+                                    <Link href={register()}>
+                                        <Button className="h-9 bg-neutral-900 font-medium text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200">
+                                            Daftar Akun
+                                        </Button>
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Hamburger button for Mobile */}
+                        <div className="flex items-center gap-2 md:hidden">
+                            <button
+                                onClick={() => updateAppearance(appearance === 'dark' ? 'light' : 'dark')}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
+                            >
+                                {appearance === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                            </button>
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
+                            >
+                                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Mobile Navigation Menu */}
+                    {mobileMenuOpen && (
+                        <div className="border-t border-neutral-200 bg-white px-4 py-4 dark:border-neutral-800 dark:bg-[#0a0a0a] md:hidden">
+                            <nav className="flex flex-col gap-3">
+                                <a
+                                    href="#features"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="rounded-md px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
                                 >
-                                    Register
-                                </Link>
-                            </>
-                        )}
-                    </nav>
+                                    Layanan
+                                </a>
+                                <a
+                                    href="#status"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="rounded-md px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                                >
+                                    Status Sistem
+                                </a>
+                                <a
+                                    href="#faq"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="rounded-md px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                                >
+                                    FAQ
+                                </a>
+                                <a
+                                    href="#contact"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="rounded-md px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                                >
+                                    Kontak
+                                </a>
+                                <div className="my-2 h-px bg-neutral-200 dark:bg-neutral-800" />
+                                {auth.user ? (
+                                    <Link href={dashboard()} onClick={() => setMobileMenuOpen(false)} className="w-full">
+                                        <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
+                                            Dashboard
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <div className="flex flex-col gap-2">
+                                        <Link href={login()} onClick={() => setMobileMenuOpen(false)} className="w-full">
+                                            <Button variant="outline" className="w-full border-neutral-300 dark:border-neutral-700">
+                                                Masuk
+                                            </Button>
+                                        </Link>
+                                        <Link href={register()} onClick={() => setMobileMenuOpen(false)} className="w-full">
+                                            <Button className="w-full bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
+                                                Daftar
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                )}
+                            </nav>
+                        </div>
+                    )}
                 </header>
-                <div className="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
-                    <main className="flex w-full max-w-[335px] flex-col-reverse lg:max-w-4xl lg:flex-row">
-                        <div className="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 text-[13px] leading-[20px] shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]">
-                            <h1 className="mb-1 font-medium">
-                                Let's get started
-                            </h1>
-                            <p className="mb-2 text-[#706f6c] dark:text-[#A1A09A]">
-                                Laravel has an incredibly rich ecosystem.
-                                <br />
-                                We suggest starting with the following.
+
+                {/* Hero Section & Glow Layout */}
+                <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28">
+                    {/* Glow grids */}
+                    <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+                    <div className="absolute top-0 left-1/2 -z-10 h-[380px] w-[600px] -translate-x-1/2 rounded-full bg-red-500/10 blur-3xl dark:bg-red-500/5" />
+
+                    <div className="relative z-10 mx-auto max-w-4xl px-4 text-center sm:px-6">
+                        {/* Section Header */}
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/5 px-3 py-1 text-xs font-semibold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+                            <Building2 className="h-3.5 w-3.5" /> Bidang Jasinfo Disgulkarmat DKI Jakarta
+                        </div>
+                        <h1 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
+                            Portal Layanan Informasi &{' '}
+                            <span className="bg-gradient-to-r from-red-600 to-orange-500 bg-clip-text text-transparent dark:from-red-500 dark:to-orange-400">
+                                Bantuan Teknis IT
+                            </span>
+                        </h1>
+                        <p className="mx-auto mt-6 max-w-2xl text-base text-neutral-600 dark:text-neutral-400 sm:text-lg">
+                            Laporkan kendala aplikasi operasional, gangguan jaringan pos pemadam, perbaikan hardware, atau ajukan permintaan layanan data secara terpadu.
+                        </p>
+
+                        {/* Interactive Help Search Bar */}
+                        <div className="mx-auto mt-10 max-w-xl">
+                            <div className="relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <Search className="h-5 w-5 text-neutral-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Cari solusi kendala (misal: Wifi Pos, E-Satgas)..."
+                                    className="block w-full rounded-xl border border-neutral-300 bg-white py-3.5 pr-4 pl-11 text-sm shadow-md transition focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-neutral-800 dark:bg-[#111111] dark:shadow-black/40"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-neutral-600"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Live Suggestions Dropdown */}
+                            {searchQuery && (
+                                <div className="absolute mt-2 max-w-xl w-full left-1/2 -translate-x-1/2 rounded-xl border border-neutral-200 bg-white/95 p-2 shadow-lg backdrop-blur-md dark:border-neutral-800 dark:bg-[#161616]/95 z-30 text-left">
+                                    <div className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
+                                        Hasil Pencarian Dokumen Bantuan
+                                    </div>
+                                    {filteredArticles.length > 0 ? (
+                                        <div className="max-h-60 overflow-y-auto">
+                                            {filteredArticles.map((article) => (
+                                                <button
+                                                    key={article.id}
+                                                    onClick={() => {
+                                                        setSelectedArticle(article);
+                                                        setSearchQuery('');
+                                                    }}
+                                                    className="w-full flex flex-col gap-0.5 rounded-lg px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition-colors"
+                                                >
+                                                    <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+                                                        {article.title}
+                                                    </span>
+                                                    <span className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
+                                                        {article.summary}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 px-3 py-4 text-sm text-neutral-500">
+                                            <Info className="h-4.5 w-4.5 text-neutral-400" />
+                                            Solusi tidak ditemukan. Coba gunakan kata kunci lain.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Hero CTAs */}
+                        <div className="mt-8 flex flex-wrap justify-center gap-4">
+                            {auth.user ? (
+                                <Link href="/tickets/create">
+                                    <Button className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95">
+                                        Buat Laporan / Tiket Baru
+                                    </Button>
+                                </Link>
+                            ) : (
+                                <Link href={login()}>
+                                    <Button className="h-11 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95">
+                                        Buat Laporan / Tiket Baru
+                                    </Button>
+                                </Link>
+                            )}
+
+                            {/* Sheet Drawer for Ticket Quick-Lookup */}
+                            <Sheet>
+                                <SheetTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        onClick={resetLookup}
+                                        className="h-11 px-6 border-neutral-300 bg-white hover:bg-neutral-100 text-neutral-700 font-semibold text-sm rounded-xl shadow-xs dark:border-neutral-800 dark:bg-[#111111] dark:text-neutral-300 dark:hover:bg-neutral-900"
+                                    >
+                                        Lacak Status Tiket
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent className="w-full sm:max-w-md border-l border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#0c0c0c] p-6">
+                                    <SheetHeader className="pb-4 border-b border-neutral-150 dark:border-neutral-800">
+                                        <SheetTitle className="text-lg font-bold flex items-center gap-2">
+                                            <RefreshCw className="h-5 w-5 text-red-500 animate-spin-slow" /> Lacak Status Laporan
+                                        </SheetTitle>
+                                        <SheetDescription className="text-xs text-neutral-500">
+                                            Periksa progres tiket bantuan Anda secara real-time dengan nomor tiket.
+                                        </SheetDescription>
+                                    </SheetHeader>
+
+                                    {/* Lookup Form */}
+                                    <form onSubmit={handleTicketLookup} className="mt-6 flex flex-col gap-4">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label htmlFor="ticket-id" className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                                                Nomor Tiket (ID Laporan)
+                                            </label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    id="ticket-id"
+                                                    value={lookupTicketId}
+                                                    onChange={(e) => setLookupTicketId(e.target.value)}
+                                                    placeholder="Contoh: TKT-202607-0001"
+                                                    required
+                                                    className="uppercase dark:bg-neutral-900"
+                                                />
+                                                <Button type="submit" className="bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-semibold">
+                                                    Cari
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </form>
+
+                                    {/* Lookup Results */}
+                                    <div className="mt-8">
+                                        {lookupExecuted && searchedTicket ? (
+                                            <div className="flex flex-col gap-5">
+                                                {/* Summary Card */}
+                                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/50">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-neutral-500">
+                                                            {searchedTicket.id}
+                                                        </span>
+                                                        <Badge
+                                                            className={cn(
+                                                                "text-[10px] font-bold px-2 py-0.5",
+                                                                searchedTicket.status === 'DONE' && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+                                                                searchedTicket.status === 'ON PROGRESS' && "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                                                                searchedTicket.status === 'OPEN' && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                                                            )}
+                                                        >
+                                                            {searchedTicket.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <h3 className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                                                        {searchedTicket.title}
+                                                    </h3>
+                                                    <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2">
+                                                        {searchedTicket.description}
+                                                    </p>
+                                                    <div className="mt-3 flex flex-wrap justify-between border-t border-neutral-200 pt-3 text-[11px] text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+                                                        <span>Teknisi: <strong className="text-neutral-700 dark:text-neutral-300">{searchedTicket.agent}</strong></span>
+                                                        <span>Tgl Lapor: {searchedTicket.date}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Timeline Progres */}
+                                                <div className="flex flex-col gap-4">
+                                                    <h4 className="text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
+                                                        Riwayat Penanganan
+                                                    </h4>
+                                                    <div className="relative pl-6 border-l-2 border-neutral-200 dark:border-neutral-800 flex flex-col gap-5">
+                                                        {searchedTicket.updates.map((update, idx) => {
+                                                            const isLast = idx === searchedTicket.updates.length - 1;
+                                                            return (
+                                                                <div key={idx} className="relative">
+                                                                    {/* Dot marker */}
+                                                                    <span className={cn(
+                                                                        "absolute -left-[31px] top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border bg-white dark:bg-neutral-950",
+                                                                        isLast ? "border-red-500 text-red-500" : "border-neutral-300 text-neutral-400 dark:border-neutral-700"
+                                                                    )}>
+                                                                        {isLast ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-2.5 w-2.5" />}
+                                                                    </span>
+                                                                    <p className={cn(
+                                                                        "text-xs leading-normal",
+                                                                        isLast ? "font-semibold text-neutral-900 dark:text-neutral-100" : "text-neutral-500 dark:text-neutral-400"
+                                                                    )}>
+                                                                        {update}
+                                                                    </p>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : lookupExecuted ? (
+                                            <div className="rounded-xl border border-dashed border-neutral-300 p-6 text-center dark:border-neutral-800">
+                                                <AlertTriangle className="mx-auto h-8 w-8 text-neutral-400" />
+                                                <h4 className="mt-3 text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                                                    Tiket Tidak Ditemukan
+                                                </h4>
+                                                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                                                    Pastikan nomor tiket Anda sesuai format (misalnya: TKT-202607-0001). Hubungi admin jika Anda baru saja mendaftarkan laporan Anda.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-xl border border-dashed border-neutral-200 p-8 text-center dark:border-neutral-800">
+                                                <RefreshCw className="mx-auto h-8 w-8 text-neutral-300 dark:text-neutral-700" />
+                                                <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+                                                    Masukkan kode tiket di atas untuk memulai pelacakan status penanganan.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section: Live System Status Operational */}
+                <section id="status" className="border-y border-neutral-200 bg-neutral-100/50 py-8 dark:border-neutral-800 dark:bg-neutral-900/30">
+                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+
+                            {/* Live operational header */}
+                            <div className="flex items-center gap-3">
+                                <span className="relative flex h-3.5 w-3.5">
+                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-emerald-500"></span>
+                                </span>
+                                <div>
+                                    <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+                                        Status Layanan IT Damkar
+                                    </h3>
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                        Semua sistem utama beroperasi normal
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Status tags grid */}
+                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 w-full md:w-auto">
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200/60 bg-white px-3.5 py-2 shadow-xs dark:border-neutral-800/80 dark:bg-[#111111]">
+                                    <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">SIAGA API</span>
+                                    <Badge className="h-5 bg-emerald-500/10 text-emerald-600 font-bold dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] hover:bg-emerald-500/10">99.9%</Badge>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200/60 bg-white px-3.5 py-2 shadow-xs dark:border-neutral-800/80 dark:bg-[#111111]">
+                                    <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">CC DAMKAR 112</span>
+                                    <Badge className="h-5 bg-emerald-500/10 text-emerald-600 font-bold dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] hover:bg-emerald-500/10">100%</Badge>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200/60 bg-white px-3.5 py-2 shadow-xs dark:border-neutral-800/80 dark:bg-[#111111]">
+                                    <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">SIAP DAMKAR</span>
+                                    <Badge className="h-5 bg-emerald-500/10 text-emerald-600 font-bold dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] hover:bg-emerald-500/10">99.9%</Badge>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200/60 bg-white px-3.5 py-2 shadow-xs dark:border-neutral-800/80 dark:bg-[#111111]">
+                                    <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">HELPDESK</span>
+                                    <Badge className="h-5 bg-emerald-500/10 text-emerald-600 font-bold dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] hover:bg-emerald-500/10">100%</Badge>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section: Service scope & Grid features */}
+                <section id="features" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+                    <div className="text-center">
+                        <h2 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white sm:text-4xl">
+                            Cakupan Layanan IT Bidang Jasinfo
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-2xl text-base text-neutral-600 dark:text-neutral-400">
+                            Kami menyediakan dukungan teknis komprehensif bagi seluruh pos pemadam, penyelamat, hingga kantor dinas pemadam DKI Jakarta.
+                        </p>
+                    </div>
+
+                    <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                        {/* Box 1: Support SI */}
+                        <div className="group rounded-2xl border border-neutral-200/60 bg-white p-6 shadow-xs transition duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-md dark:border-neutral-800 dark:bg-[#121212] dark:hover:border-red-500/30">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                                <Laptop className="h-6 w-6" />
+                            </div>
+                            <h3 className="mt-4 text-base font-bold text-neutral-800 group-hover:text-red-600 dark:text-neutral-100 dark:group-hover:text-red-400">
+                                Support Aplikasi & SI
+                            </h3>
+                            <p className="mt-2 text-xs leading-normal text-neutral-500 dark:text-neutral-400">
+                                Penanganan bug data, error absensi E-Satgas, troubleshooting Dashboard Damkar, serta integrasi SIAGA API dinas.
                             </p>
-                            <ul className="mb-4 flex flex-col lg:mb-6">
-                                <li className="relative flex items-center gap-4 py-2 before:absolute before:top-1/2 before:bottom-0 before:left-[0.4rem] before:border-l before:border-[#e3e3e0] dark:before:border-[#3E3E3A]">
-                                    <span className="relative bg-white py-1 dark:bg-[#161615]">
-                                        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#e3e3e0] bg-[#FDFDFC] shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-[#dbdbd7] dark:bg-[#3E3E3A]" />
-                                        </span>
-                                    </span>
-                                    <span>
-                                        Read the
-                                        <a
-                                            href="https://laravel.com/docs"
-                                            target="_blank"
-                                            className="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
-                                        >
-                                            <span>Documentation</span>
-                                            <svg
-                                                width={10}
-                                                height={11}
-                                                viewBox="0 0 10 11"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-2.5 w-2.5"
-                                            >
-                                                <path
-                                                    d="M7.70833 6.95834V2.79167H3.54167M2.5 8L7.5 3.00001"
-                                                    stroke="currentColor"
-                                                    strokeLinecap="square"
-                                                />
-                                            </svg>
-                                        </a>
-                                    </span>
-                                </li>
-                                <li className="relative flex items-center gap-4 py-2 before:absolute before:top-0 before:bottom-1/2 before:left-[0.4rem] before:border-l before:border-[#e3e3e0] dark:before:border-[#3E3E3A]">
-                                    <span className="relative bg-white py-1 dark:bg-[#161615]">
-                                        <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#e3e3e0] bg-[#FDFDFC] shadow-[0px_0px_1px_0px_rgba(0,0,0,0.03),0px_1px_2px_0px_rgba(0,0,0,0.06)] dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-[#dbdbd7] dark:bg-[#3E3E3A]" />
-                                        </span>
-                                    </span>
-                                    <span>
-                                        Watch video tutorials at
-                                        <a
-                                            href="https://laracasts.com"
-                                            target="_blank"
-                                            className="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
-                                        >
-                                            <span>Laracasts</span>
-                                            <svg
-                                                width={10}
-                                                height={11}
-                                                viewBox="0 0 10 11"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-2.5 w-2.5"
-                                            >
-                                                <path
-                                                    d="M7.70833 6.95834V2.79167H3.54167M2.5 8L7.5 3.00001"
-                                                    stroke="currentColor"
-                                                    strokeLinecap="square"
-                                                />
-                                            </svg>
-                                        </a>
-                                    </span>
-                                </li>
-                            </ul>
-                            <ul className="flex gap-3 text-sm leading-normal">
-                                <li>
-                                    <a
-                                        href="https://cloud.laravel.com"
-                                        target="_blank"
-                                        className="inline-block rounded-sm border border-black bg-[#1b1b18] px-5 py-1.5 text-sm leading-normal text-white hover:border-black hover:bg-black dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:border-white dark:hover:bg-white"
-                                    >
-                                        Deploy now
-                                    </a>
-                                </li>
-                            </ul>
                         </div>
-                        <div className="relative -mb-px aspect-[335/364] w-full shrink-0 overflow-hidden rounded-t-lg bg-[#fff2f2] lg:mb-0 lg:-ml-px lg:aspect-auto lg:w-[438px] lg:rounded-t-none lg:rounded-r-lg dark:bg-[#1D0002]">
-                            {/* Laravel Logo */}
-                            <svg
-                                className="w-full max-w-none translate-y-0 text-[#F53003] opacity-100 transition-all duration-750 dark:text-[#F61500] starting:opacity-0 motion-safe:starting:translate-y-6"
-                                viewBox="0 0 438 104"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M17.2036 -3H0V102.197H49.5189V86.7187H17.2036V-3Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M110.256 41.6337C108.061 38.1275 104.945 35.3731 100.905 33.3681C96.8667 31.3647 92.8016 30.3618 88.7131 30.3618C83.4247 30.3618 78.5885 31.3389 74.201 33.2923C69.8111 35.2456 66.0474 37.928 62.9059 41.3333C59.7643 44.7401 57.3198 48.6726 55.5754 53.1293C53.8287 57.589 52.9572 62.274 52.9572 67.1813C52.9572 72.1925 53.8287 76.8995 55.5754 81.3069C57.3191 85.7173 59.7636 89.6241 62.9059 93.0293C66.0474 96.4361 69.8119 99.1155 74.201 101.069C78.5885 103.022 83.4247 103.999 88.7131 103.999C92.8016 103.999 96.8667 102.997 100.905 100.994C104.945 98.9911 108.061 96.2359 110.256 92.7282V102.195H126.563V32.1642H110.256V41.6337ZM108.76 75.7472C107.762 78.4531 106.366 80.8078 104.572 82.8112C102.776 84.8161 100.606 86.4183 98.0637 87.6206C95.5202 88.823 92.7004 89.4238 89.6103 89.4238C86.5178 89.4238 83.7252 88.823 81.2324 87.6206C78.7388 86.4183 76.5949 84.8161 74.7998 82.8112C73.004 80.8078 71.6319 78.4531 70.6856 75.7472C69.7356 73.0421 69.2644 70.1868 69.2644 67.1821C69.2644 64.1758 69.7356 61.3205 70.6856 58.6154C71.6319 55.9102 73.004 53.5571 74.7998 51.5522C76.5949 49.5495 78.738 47.9451 81.2324 46.7427C83.7252 45.5404 86.5178 44.9396 89.6103 44.9396C92.7012 44.9396 95.5202 45.5404 98.0637 46.7427C100.606 47.9451 102.776 49.5487 104.572 51.5522C106.367 53.5571 107.762 55.9102 108.76 58.6154C109.756 61.3205 110.256 64.1758 110.256 67.1821C110.256 70.1868 109.756 73.0421 108.76 75.7472Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M242.805 41.6337C240.611 38.1275 237.494 35.3731 233.455 33.3681C229.416 31.3647 225.351 30.3618 221.262 30.3618C215.974 30.3618 211.138 31.3389 206.75 33.2923C202.36 35.2456 198.597 37.928 195.455 41.3333C192.314 44.7401 189.869 48.6726 188.125 53.1293C186.378 57.589 185.507 62.274 185.507 67.1813C185.507 72.1925 186.378 76.8995 188.125 81.3069C189.868 85.7173 192.313 89.6241 195.455 93.0293C198.597 96.4361 202.361 99.1155 206.75 101.069C211.138 103.022 215.974 103.999 221.262 103.999C225.351 103.999 229.416 102.997 233.455 100.994C237.494 98.9911 240.611 96.2359 242.805 92.7282V102.195H259.112V32.1642H242.805V41.6337ZM241.31 75.7472C240.312 78.4531 238.916 80.8078 237.122 82.8112C235.326 84.8161 233.156 86.4183 230.614 87.6206C228.07 88.823 225.251 89.4238 222.16 89.4238C219.068 89.4238 216.275 88.823 213.782 87.6206C211.289 86.4183 209.145 84.8161 207.35 82.8112C205.554 80.8078 204.182 78.4531 203.236 75.7472C202.286 73.0421 201.814 70.1868 201.814 67.1821C201.814 64.1758 202.286 61.3205 203.236 58.6154C204.182 55.9102 205.554 53.5571 207.35 51.5522C209.145 49.5495 211.288 47.9451 213.782 46.7427C216.275 45.5404 219.068 44.9396 222.16 44.9396C225.251 44.9396 228.07 45.5404 230.614 46.7427C233.156 47.9451 235.326 49.5487 237.122 51.5522C238.917 53.5571 240.312 55.9102 241.31 58.6154C242.306 61.3205 242.806 64.1758 242.806 67.1821C242.805 70.1868 242.305 73.0421 241.31 75.7472Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M438 -3H421.694V102.197H438V-3Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M139.43 102.197H155.735V48.2834H183.712V32.1665H139.43V102.197Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M324.49 32.1665L303.995 85.794L283.498 32.1665H266.983L293.748 102.197H314.242L341.006 32.1665H324.49Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M376.571 30.3656C356.603 30.3656 340.797 46.8497 340.797 67.1828C340.797 89.6597 356.094 104 378.661 104C391.29 104 399.354 99.1488 409.206 88.5848L398.189 80.0226C398.183 80.031 389.874 90.9895 377.468 90.9895C363.048 90.9895 356.977 79.3111 356.977 73.269H411.075C413.917 50.1328 398.775 30.3656 376.571 30.3656ZM357.02 61.0967C357.145 59.7487 359.023 43.3761 376.442 43.3761C393.861 43.3761 395.978 59.7464 396.099 61.0967H357.02Z"
-                                    fill="currentColor"
-                                />
-                            </svg>
 
-                            {/* 13 */}
-                            <svg
-                                className="relative -mt-[6.6rem] -ml-8 w-[438px] max-w-none [--stroke-color:#1B1B18] lg:ml-0 dark:[--stroke-color:#FF750F]"
-                                viewBox="0 0 440 392"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <g className="text-[#1B1B18] opacity-100 mix-blend-darken transition-all delay-300 duration-750 dark:text-black dark:mix-blend-normal starting:opacity-0">
-                                    <mask
-                                        id="path-1-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="-0.328613"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="-0.328613"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z" />
-                                        <path d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M234.936 400.8C204.136 400.8 178.936 392.4 159.336 375.6C140.136 358.8 130.536 337 130.536 310.2H200.736C200.736 318.2 203.736 324.8 209.736 330C215.736 335.2 223.736 337.8 233.736 337.8C243.336 337.8 251.136 335 257.136 329.4C263.536 323.8 266.736 316.6 266.736 307.8C266.736 299.8 263.936 293.2 258.336 288C252.736 282.8 245.536 280.2 236.736 280.2H199.536V218.4H236.736C243.536 218.4 249.336 216 254.136 211.2C258.936 206.4 261.336 200.4 261.336 193.2C261.336 184.8 258.736 178.2 253.536 173.4C248.336 168.6 241.736 166.2 233.736 166.2C226.536 166.2 220.336 168.4 215.136 172.8C210.336 177.2 207.936 182.8 207.936 189.6H141.336C141.336 164.8 150.136 144.6 167.736 129C185.336 113 207.936 105 235.536 105C263.136 105 285.536 112.2 302.736 126.6C320.336 141 329.136 160 329.136 183.6C329.136 200.8 324.536 214.8 315.336 225.6C306.136 236 294.336 243.2 279.936 247.2C297.136 252 310.736 260.2 320.736 271.8C331.136 283.4 336.336 298 336.336 315.6C336.336 340.4 326.936 360.8 308.136 376.8C289.336 392.8 264.936 400.8 234.936 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-1-mask)"
-                                    />
-                                    <path
-                                        d="M26.8714 167.6H1.67139V105.2H94.6714V400.2H26.8714V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-1-mask)"
-                                    />
-                                </g>
-
-                                <g className="text-[#F3BEC7] opacity-100 transition-all delay-400 duration-750 dark:text-[#4B0600] starting:opacity-0 motion-safe:starting:-translate-x-[26px]">
-                                    <mask
-                                        id="path-2-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="25.3357"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="25.3357"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z" />
-                                        <path d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M260.6 400.8C229.8 400.8 204.6 392.4 185 375.6C165.8 358.8 156.2 337 156.2 310.2H226.4C226.4 318.2 229.4 324.8 235.4 330C241.4 335.2 249.4 337.8 259.4 337.8C269 337.8 276.8 335 282.8 329.4C289.2 323.8 292.4 316.6 292.4 307.8C292.4 299.8 289.6 293.2 284 288C278.4 282.8 271.2 280.2 262.4 280.2H225.2V218.4H262.4C269.2 218.4 275 216 279.8 211.2C284.6 206.4 287 200.4 287 193.2C287 184.8 284.4 178.2 279.2 173.4C274 168.6 267.4 166.2 259.4 166.2C252.2 166.2 246 168.4 240.8 172.8C236 177.2 233.6 182.8 233.6 189.6H167C167 164.8 175.8 144.6 193.4 129C211 113 233.6 105 261.2 105C288.8 105 311.2 112.2 328.4 126.6C346 141 354.8 160 354.8 183.6C354.8 200.8 350.2 214.8 341 225.6C331.8 236 320 243.2 305.6 247.2C322.8 252 336.4 260.2 346.4 271.8C356.8 283.4 362 298 362 315.6C362 340.4 352.6 360.8 333.8 376.8C315 392.8 290.6 400.8 260.6 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-2-mask)"
-                                    />
-                                    <path
-                                        d="M52.5357 167.6H27.3357V105.2H120.336V400.2H52.5357V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-2-mask)"
-                                    />
-                                </g>
-
-                                <g className="text-[#F8B803] opacity-100 mix-blend-color transition-all delay-400 duration-750 dark:text-[#391800] dark:mix-blend-hard-light starting:opacity-0 motion-safe:starting:-translate-x-[51px]">
-                                    <mask
-                                        id="path-3-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="51"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="51"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z" />
-                                        <path d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M286.264 400.8C255.464 400.8 230.264 392.4 210.664 375.6C191.464 358.8 181.864 337 181.864 310.2H252.064C252.064 318.2 255.064 324.8 261.064 330C267.064 335.2 275.064 337.8 285.064 337.8C294.664 337.8 302.464 335 308.464 329.4C314.864 323.8 318.064 316.6 318.064 307.8C318.064 299.8 315.264 293.2 309.664 288C304.064 282.8 296.864 280.2 288.064 280.2H250.864V218.4H288.064C294.864 218.4 300.664 216 305.464 211.2C310.264 206.4 312.664 200.4 312.664 193.2C312.664 184.8 310.064 178.2 304.864 173.4C299.664 168.6 293.064 166.2 285.064 166.2C277.864 166.2 271.664 168.4 266.464 172.8C261.664 177.2 259.264 182.8 259.264 189.6H192.664C192.664 164.8 201.464 144.6 219.064 129C236.664 113 259.264 105 286.864 105C314.464 105 336.864 112.2 354.064 126.6C371.664 141 380.464 160 380.464 183.6C380.464 200.8 375.864 214.8 366.664 225.6C357.464 236 345.664 243.2 331.264 247.2C348.464 252 362.064 260.2 372.064 271.8C382.464 283.4 387.664 298 387.664 315.6C387.664 340.4 378.264 360.8 359.464 376.8C340.664 392.8 316.264 400.8 286.264 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-3-mask)"
-                                    />
-                                    <path
-                                        d="M78.2 167.6H53V105.2H146V400.2H78.2V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-3-mask)"
-                                    />
-                                </g>
-
-                                <g className="text-[#F3BEC7] opacity-100 mix-blend-multiply transition-all delay-400 duration-750 dark:text-[#733000] dark:mix-blend-normal starting:opacity-0 motion-safe:starting:-translate-x-[78px]">
-                                    <mask
-                                        id="path-4-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="76.6643"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="76.6643"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z" />
-                                        <path d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M311.929 400.8C281.129 400.8 255.929 392.4 236.329 375.6C217.129 358.8 207.529 337 207.529 310.2H277.729C277.729 318.2 280.729 324.8 286.729 330C292.729 335.2 300.729 337.8 310.729 337.8C320.329 337.8 328.129 335 334.129 329.4C340.529 323.8 343.729 316.6 343.729 307.8C343.729 299.8 340.929 293.2 335.329 288C329.729 282.8 322.529 280.2 313.729 280.2H276.529V218.4H313.729C320.529 218.4 326.329 216 331.129 211.2C335.929 206.4 338.329 200.4 338.329 193.2C338.329 184.8 335.729 178.2 330.529 173.4C325.329 168.6 318.729 166.2 310.729 166.2C303.529 166.2 297.329 168.4 292.129 172.8C287.329 177.2 284.929 182.8 284.929 189.6H218.329C218.329 164.8 227.129 144.6 244.729 129C262.329 113 284.929 105 312.529 105C340.129 105 362.529 112.2 379.729 126.6C397.329 141 406.129 160 406.129 183.6C406.129 200.8 401.529 214.8 392.329 225.6C383.129 236 371.329 243.2 356.929 247.2C374.129 252 387.729 260.2 397.729 271.8C408.129 283.4 413.329 298 413.329 315.6C413.329 340.4 403.929 360.8 385.129 376.8C366.329 392.8 341.929 400.8 311.929 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-4-mask)"
-                                    />
-                                    <path
-                                        d="M103.864 167.6H78.6643V105.2H171.664V400.2H103.864V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-4-mask)"
-                                    />
-                                </g>
-
-                                <g className="text-[#F3BEC7] opacity-100 mix-blend-hard-light transition-all delay-400 duration-750 dark:text-[#4B0600] starting:opacity-0 motion-safe:starting:-translate-x-[102px]">
-                                    <mask
-                                        id="path-5-mask"
-                                        maskUnits="userSpaceOnUse"
-                                        x="102.329"
-                                        y="103"
-                                        width="338"
-                                        height="299"
-                                        fill="black"
-                                    >
-                                        <rect
-                                            fill="white"
-                                            x="102.329"
-                                            y="103"
-                                            width="338"
-                                            height="299"
-                                        />
-                                        <path d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z" />
-                                        <path d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z" />
-                                    </mask>
-                                    <path
-                                        d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                        fill="currentColor"
-                                    />
-                                    <path
-                                        d="M337.593 400.8C306.793 400.8 281.593 392.4 261.993 375.6C242.793 358.8 233.193 337 233.193 310.2H303.393C303.393 318.2 306.393 324.8 312.393 330C318.393 335.2 326.393 337.8 336.393 337.8C345.993 337.8 353.793 335 359.793 329.4C366.193 323.8 369.393 316.6 369.393 307.8C369.393 299.8 366.593 293.2 360.993 288C355.393 282.8 348.193 280.2 339.393 280.2H302.193V218.4H339.393C346.193 218.4 351.993 216 356.793 211.2C361.593 206.4 363.993 200.4 363.993 193.2C363.993 184.8 361.393 178.2 356.193 173.4C350.993 168.6 344.393 166.2 336.393 166.2C329.193 166.2 322.993 168.4 317.793 172.8C312.993 177.2 310.593 182.8 310.593 189.6H243.993C243.993 164.8 252.793 144.6 270.393 129C287.993 113 310.593 105 338.193 105C365.793 105 388.193 112.2 405.393 126.6C422.993 141 431.793 160 431.793 183.6C431.793 200.8 427.193 214.8 417.993 225.6C408.793 236 396.993 243.2 382.593 247.2C399.793 252 413.393 260.2 423.393 271.8C433.793 283.4 438.993 298 438.993 315.6C438.993 340.4 429.593 360.8 410.793 376.8C391.993 392.8 367.593 400.8 337.593 400.8Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-5-mask)"
-                                    />
-                                    <path
-                                        d="M129.529 167.6H104.329V105.2H197.329V400.2H129.529V167.6Z"
-                                        stroke="var(--stroke-color)"
-                                        strokeWidth="2.4"
-                                        mask="url(#path-5-mask)"
-                                    />
-                                </g>
-                            </svg>
-                            <div className="absolute inset-0 rounded-t-lg shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-t-none lg:rounded-r-lg dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"></div>
+                        {/* Box 2: Technical Support */}
+                        <div className="group rounded-2xl border border-neutral-200/60 bg-white p-6 shadow-xs transition duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-md dark:border-neutral-800 dark:bg-[#121212] dark:hover:border-red-500/30">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                                <Network className="h-6 w-6" />
+                            </div>
+                            <h3 className="mt-4 text-base font-bold text-neutral-800 group-hover:text-red-600 dark:text-neutral-100 dark:group-hover:text-red-400">
+                                Jaringan & IT Support
+                            </h3>
+                            <p className="mt-2 text-xs leading-normal text-neutral-500 dark:text-neutral-400">
+                                Penanganan koneksi internet terputus di Pos Pemadam, instalasi printer dinas, konfigurasi CCTV Pos, dan switch jaringan LAN.
+                            </p>
                         </div>
-                    </main>
-                </div>
-                <div className="hidden h-14.5 lg:block"></div>
+
+                        {/* Box 3: Data extraction */}
+                        <div className="group rounded-2xl border border-neutral-200/60 bg-white p-6 shadow-xs transition duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-md dark:border-neutral-800 dark:bg-[#121212] dark:hover:border-red-500/30">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                                <Database className="h-6 w-6" />
+                            </div>
+                            <h3 className="mt-4 text-base font-bold text-neutral-800 group-hover:text-red-600 dark:text-neutral-100 dark:group-hover:text-red-400">
+                                Layanan Ekstraksi Data
+                            </h3>
+                            <p className="mt-2 text-xs leading-normal text-neutral-500 dark:text-neutral-400">
+                                Permintaan ekspor data statistik kejadian kebakaran, penyelamatan damkar, data personil dinas untuk pelaporan instansi luar.
+                            </p>
+                        </div>
+
+                        {/* Box 4: Account management */}
+                        <div className="group rounded-2xl border border-neutral-200/60 bg-white p-6 shadow-xs transition duration-300 hover:-translate-y-1 hover:border-red-500/50 hover:shadow-md dark:border-neutral-800 dark:bg-[#121212] dark:hover:border-red-500/30">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                                <UserCheck className="h-6 w-6" />
+                            </div>
+                            <h3 className="mt-4 text-base font-bold text-neutral-800 group-hover:text-red-600 dark:text-neutral-100 dark:group-hover:text-red-400">
+                                Manajemen Akun IT
+                            </h3>
+                            <p className="mt-2 text-xs leading-normal text-neutral-500 dark:text-neutral-400">
+                                Pembuatan akun SIAGA/SIAP Damkar Baru, pemulihan akses (reset password) akun, dan pengaturan hak akses peran di sistem.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Operational counter stats */}
+                    <div className="mt-16 rounded-2xl bg-neutral-900 p-8 dark:bg-[#141414]">
+                        <div className="grid gap-6 text-center sm:grid-cols-3">
+                            <div className="flex flex-col justify-center border-b border-neutral-800 pb-6 sm:border-r sm:border-b-0 sm:pb-0">
+                                <span className="text-3xl font-extrabold text-white">2.450+</span>
+                                <span className="mt-2 text-xs text-neutral-400 uppercase font-semibold">Tiket Diselesaikan</span>
+                            </div>
+                            <div className="flex flex-col justify-center border-b border-neutral-800 pb-6 sm:border-r sm:border-b-0 sm:pb-0">
+                                <span className="text-3xl font-extrabold text-white">&lt; 30 Menit</span>
+                                <span className="mt-2 text-xs text-neutral-400 uppercase font-semibold">Rata-rata Respon Awal</span>
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <span className="text-3xl font-extrabold text-white">98.6%</span>
+                                <span className="mt-2 text-xs text-neutral-400 uppercase font-semibold">Indeks Kepuasan Petugas</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section: FAQs Accordion with Tab Filters */}
+                <section id="faq" className="border-t border-neutral-200 bg-neutral-100/50 py-16 dark:border-neutral-800 dark:bg-neutral-900/10 sm:py-24">
+                    <div className="mx-auto max-w-4xl px-4 sm:px-6">
+                        <div className="text-center">
+                            <h2 className="text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white">
+                                FAQ & Informasi Solusi Mandiri
+                            </h2>
+                            <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
+                                Pelajari solusi mandiri atas kendala umum sebelum membuat laporan untuk menghemat waktu penanganan.
+                            </p>
+                        </div>
+
+                        {/* FAQ Filters Tabs */}
+                        <div className="mt-8 flex flex-wrap justify-center gap-2">
+                            {(['all', 'jaringan', 'aplikasi', 'hardware'] as const).map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => {
+                                        setActiveFaqTab(tab);
+                                        setExpandedFaqId(null);
+                                    }}
+                                    className={cn(
+                                        "px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all border",
+                                        activeFaqTab === tab
+                                            ? "bg-neutral-900 border-neutral-900 text-white dark:bg-neutral-100 dark:border-neutral-100 dark:text-neutral-900"
+                                            : "bg-white border-neutral-250 text-neutral-600 hover:bg-neutral-100 dark:bg-[#111111] dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                                    )}
+                                >
+                                    {tab === 'all' ? 'Semua Kategori' : tab}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* FAQ Accordion List */}
+                        <div className="mt-8 flex flex-col gap-4">
+                            {filteredFaqs.map((faq) => {
+                                const isExpanded = expandedFaqId === faq.id;
+                                return (
+                                    <div
+                                        key={faq.id}
+                                        className="rounded-xl border border-neutral-200/70 bg-white shadow-xs overflow-hidden dark:border-neutral-800 dark:bg-[#111111] transition-all"
+                                    >
+                                        <button
+                                            onClick={() => setExpandedFaqId(isExpanded ? null : faq.id)}
+                                            className="w-full flex items-center justify-between p-5 text-left font-semibold text-sm sm:text-base text-neutral-800 dark:text-neutral-200"
+                                        >
+                                            <span>{faq.question}</span>
+                                            <ChevronDown className={cn(
+                                                "h-5 w-5 text-neutral-400 transition-transform duration-250",
+                                                isExpanded && "rotate-180 text-red-500"
+                                            )} />
+                                        </button>
+                                        {isExpanded && (
+                                            <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/30 leading-relaxed">
+                                                {faq.answer}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Section: Division Contact & Hotline */}
+                <section id="contact" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+                    <div className="rounded-3xl bg-red-650 px-6 py-12 text-center text-white dark:bg-red-950/20 dark:border dark:border-red-900/40 shadow-xl sm:px-12 sm:py-16">
+                        <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                            Butuh bantuan mendesak untuk Pos Damkar?
+                        </h2>
+                        <p className="mx-auto mt-4 max-w-lg text-sm text-red-100">
+                            Tim teknisi Bidang Jasinfo siap memberikan respon cepat jika terjadi kendala infrastruktur sistem pemadaman utama.
+                        </p>
+
+                        <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm">
+                            <a href="https://wa.me/6285119995113" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-xs">
+                                <Phone className="h-5 w-5 text-red-200" />
+                                <span>WhatsApp Helpdesk: <strong>+62 851-1999-5113</strong></span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Footer Component */}
+                <footer className="border-t border-neutral-200 bg-white py-12 dark:border-neutral-800 dark:bg-[#0c0c0c] text-neutral-500 dark:text-neutral-400">
+                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                        <div className="grid gap-8 md:grid-cols-3">
+                            {/* Division Profile */}
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-7 w-7 rounded bg-red-500/10 p-0.5 dark:bg-red-500/20">
+                                        <img src={toAsset('/pampi-head.png')} alt="Pampi Logo" className="h-full w-full object-contain" />
+                                    </div>
+                                    <h4 className="font-bold text-neutral-800 dark:text-neutral-200 text-sm">
+                                        Bidang Jasinfo Disgulkarmat
+                                    </h4>
+                                </div>
+                                <p className="text-xs leading-normal">
+                                    Penyediaan prasarana, sarana pengolahan data, telekomunikasi, dan sistem informasi penanggulangan kebakaran dan penyelamatan DKI Jakarta.
+                                </p>
+                            </div>
+
+                            {/* Links */}
+                            <div className="flex flex-col gap-2">
+                                <h4 className="font-bold text-neutral-700 dark:text-neutral-300 text-xs uppercase tracking-wider">
+                                    Tautan Cepat
+                                </h4>
+                                <ul className="flex flex-col gap-1.5 text-xs">
+                                    <li><a href="https://pemadam.jakarta.go.id" target="_blank" className="hover:text-red-500 flex items-center gap-1">Website Resmi Dinas <ExternalLink className="h-3 w-3" /></a></li>
+                                    <li><a href="https://siagaapi.jakarta.go.id" target="_blank" className="hover:text-red-500 flex items-center gap-1">Siaga Api <ExternalLink className="h-3 w-3" /></a></li>
+                                    <li><a href="https://pemadam.jakarta.go.id/kontak" target="_blank" className="hover:text-red-500 flex items-center gap-1">Layanan Pengaduan 112 <ExternalLink className="h-3 w-3" /></a></li>
+                                </ul>
+                            </div>
+
+                            {/* Location Address */}
+                            <div className="flex flex-col gap-3">
+                                <h4 className="font-bold text-neutral-700 dark:text-neutral-300 text-xs uppercase tracking-wider">
+                                    Sekretariat / CC Damkar
+                                </h4>
+                                <p className="text-xs leading-normal flex items-start gap-2">
+                                    <MapPin className="h-5 w-5 text-neutral-400 shrink-0" />
+                                    <span>
+                                        Dinas Penanggulangan Kebakaran & Penyelamatan DKI Jakarta, Bidang Jasinfo, Lantai 8. Jl. KH. Zainul Arifin No.71, Jakarta Pusat.
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 border-t border-neutral-200 pt-6 text-center text-xs dark:border-neutral-800">
+                            <p>© 2026 Dinas Penanggulangan Kebakaran & Penyelamatan Provinsi DKI Jakarta. All Rights Reserved. IT Helpdesk developed by Bidang Jasinfo.</p>
+                        </div>
+                    </div>
+                </footer>
+
+                {/* Dialog Detail Help Article Modal */}
+                {selectedArticle && (
+                    <Dialog open={!!selectedArticle} onOpenChange={() => setSelectedArticle(null)}>
+                        <DialogContent className="sm:max-w-md bg-white dark:bg-[#0c0c0c]">
+                            <DialogHeader>
+                                <Badge className="w-fit text-[10px] uppercase font-bold tracking-wider mb-2 bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400 hover:bg-red-500/10">
+                                    {selectedArticle.category}
+                                </Badge>
+                                <DialogTitle className="text-base font-bold text-neutral-800 dark:text-neutral-100">
+                                    {selectedArticle.title}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs mt-1 text-neutral-500">
+                                    Materi Solusi Mandiri Jasinfo
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="mt-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300 bg-neutral-50 p-4 rounded-xl border border-neutral-200/50 dark:bg-neutral-900/40 dark:border-neutral-800/80">
+                                {selectedArticle.content}
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <Button
+                                    onClick={() => setSelectedArticle(null)}
+                                    className="bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-100 font-semibold text-xs"
+                                >
+                                    Selesai Membaca
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                )}
+
             </div>
         </>
     );

@@ -42,8 +42,25 @@ export function prefixUrl(url: string | any): string | any {
 }
 
 // Custom Link Component
-export const Link = React.forwardRef<any, any>(({ href, ...props }, ref) => {
-    return <OriginalLink {...props} ref={ref} href={prefixUrl(href)} />;
+export const Link = React.forwardRef<any, any>(({ href, method, ...props }, ref) => {
+    let resolvedMethod = method;
+    let resolvedHref = href;
+    
+    if (href && typeof href === 'object') {
+        if (href.method) {
+            resolvedMethod = href.method;
+        }
+        resolvedHref = href.url;
+    }
+    
+    return (
+        <OriginalLink
+            {...props}
+            ref={ref}
+            href={prefixUrl(resolvedHref)}
+            method={resolvedMethod}
+        />
+    );
 });
 
 Link.displayName = 'Link';

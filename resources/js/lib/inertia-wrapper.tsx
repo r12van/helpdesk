@@ -52,7 +52,21 @@ Link.displayName = 'Link';
 export const router = new Proxy(originalRouter, {
     get(target, prop, receiver) {
         if (prop === 'visit') {
-            return (url: any, options?: any) => target.visit(prefixUrl(url), options);
+            return (url: any, options?: any) => {
+                const method = options?.method?.toUpperCase();
+                if (method && method !== 'GET' && method !== 'POST') {
+                    const visitOptions = {
+                        ...options,
+                        method: 'post',
+                        data: {
+                            ...(options?.data ?? {}),
+                            _method: method,
+                        }
+                    };
+                    return target.visit(prefixUrl(url), visitOptions);
+                }
+                return target.visit(prefixUrl(url), options);
+            };
         }
         if (prop === 'get') {
             return (url: any, data?: any, options?: any) => target.get(prefixUrl(url), data, options);
@@ -61,13 +75,32 @@ export const router = new Proxy(originalRouter, {
             return (url: any, data?: any, options?: any) => target.post(prefixUrl(url), data, options);
         }
         if (prop === 'put') {
-            return (url: any, data?: any, options?: any) => target.put(prefixUrl(url), data, options);
+            return (url: any, data?: any, options?: any) => {
+                const spoofedData = {
+                    ...(data ?? {}),
+                    _method: 'PUT',
+                };
+                return target.post(prefixUrl(url), spoofedData, options);
+            };
         }
         if (prop === 'patch') {
-            return (url: any, data?: any, options?: any) => target.patch(prefixUrl(url), data, options);
+            return (url: any, data?: any, options?: any) => {
+                const spoofedData = {
+                    ...(data ?? {}),
+                    _method: 'PATCH',
+                };
+                return target.post(prefixUrl(url), spoofedData, options);
+            };
         }
         if (prop === 'delete') {
-            return (url: any, options?: any) => target.delete(prefixUrl(url), options);
+            return (url: any, options?: any) => {
+                const data = {
+                    ...(options?.data ?? {}),
+                    _method: 'DELETE',
+                };
+                const { data: _, ...restOptions } = options ?? {};
+                return target.post(prefixUrl(url), data, restOptions);
+            };
         }
         
         const value = Reflect.get(target, prop, receiver);
@@ -81,6 +114,20 @@ export function useForm(...args: any[]) {
     
     const originalSubmit = form.submit;
     form.submit = (method: string, url: string, options?: any) => {
+        const upperMethod = method.toUpperCase();
+        if (upperMethod !== 'GET' && upperMethod !== 'POST') {
+            const originalTransform = options?.transform || ((data: any) => data);
+            options = {
+                ...options,
+                transform: (data: any) => {
+                    return {
+                        ...originalTransform(data),
+                        _method: upperMethod,
+                    };
+                }
+            };
+            return originalSubmit.call(form, 'post', prefixUrl(url), options);
+        }
         return originalSubmit.call(form, method, prefixUrl(url), options);
     };
     
@@ -94,19 +141,16 @@ export function useForm(...args: any[]) {
         return originalPost.call(form, prefixUrl(url), options);
     };
     
-    const originalPut = form.put;
     form.put = (url: string, options?: any) => {
-        return originalPut.call(form, prefixUrl(url), options);
+        return form.submit('put', url, options);
     };
     
-    const originalPatch = form.patch;
     form.patch = (url: string, options?: any) => {
-        return originalPatch.call(form, prefixUrl(url), options);
+        return form.submit('patch', url, options);
     };
     
-    const originalDelete = form.delete;
     form.delete = (url: string, options?: any) => {
-        return originalDelete.call(form, prefixUrl(url), options);
+        return form.submit('delete', url, options);
     };
     
     return form;

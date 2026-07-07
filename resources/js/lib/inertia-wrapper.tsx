@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link as OriginalLink, router as originalRouter } from '../../../node_modules/@inertiajs/react';
+import { Link as OriginalLink, router as originalRouter, useForm as originalUseForm } from '../../../node_modules/@inertiajs/react';
 
 export * from '../../../node_modules/@inertiajs/react';
 
@@ -74,3 +74,40 @@ export const router = new Proxy(originalRouter, {
         return typeof value === 'function' ? value.bind(target) : value;
     }
 });
+
+// Custom useForm Wrapper to intercept and prefix form actions
+export function useForm(...args: any[]) {
+    const form = (originalUseForm as any)(...args);
+    
+    const originalSubmit = form.submit;
+    form.submit = (method: string, url: string, options?: any) => {
+        return originalSubmit.call(form, method, prefixUrl(url), options);
+    };
+    
+    const originalGet = form.get;
+    form.get = (url: string, options?: any) => {
+        return originalGet.call(form, prefixUrl(url), options);
+    };
+    
+    const originalPost = form.post;
+    form.post = (url: string, options?: any) => {
+        return originalPost.call(form, prefixUrl(url), options);
+    };
+    
+    const originalPut = form.put;
+    form.put = (url: string, options?: any) => {
+        return originalPut.call(form, prefixUrl(url), options);
+    };
+    
+    const originalPatch = form.patch;
+    form.patch = (url: string, options?: any) => {
+        return originalPatch.call(form, prefixUrl(url), options);
+    };
+    
+    const originalDelete = form.delete;
+    form.delete = (url: string, options?: any) => {
+        return originalDelete.call(form, prefixUrl(url), options);
+    };
+    
+    return form;
+}

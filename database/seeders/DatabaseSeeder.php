@@ -10,8 +10,6 @@ use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
@@ -29,7 +27,9 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([
+            ReferenceSeeder::class,
             MasterOptionSeeder::class,
+            ExcelDataSeeder::class,
         ]);
     }
 }

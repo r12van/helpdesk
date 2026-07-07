@@ -157,7 +157,7 @@ class Ticket extends Model
     /**
      * Generate a unique ticket number in format TJ-YYMM-XXXX
      */
-    public static function generateTicketNumber(CarbonImmutable $date = null): string
+    public static function generateTicketNumber(\Carbon\CarbonInterface $date = null): string
     {
         $date = $date ?? now();
         $prefix = 'TJ-' . $date->format('ym');

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Models\Ticket;
 use Inertia\Inertia;
 
-Route::prefix(env('ROUTE_PREFIX', ''))->group(function () {
+Route::prefix('')->group(function () {
     Route::inertia('/', 'welcome')->name('home');
 
     Route::middleware(['auth', 'verified'])->group(function () {

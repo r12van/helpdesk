@@ -1,6 +1,6 @@
 # Deployment Guide: Apache Subfolder (Ubuntu)
 
-This guide explains how to deploy the IT Helpdesk application on an Ubuntu VPS under Apache in the subfolder `/supports` (`https://pemadam.jakarta.go.id/supports/`) without using Docker.
+This guide explains how to deploy the IT Helpdesk application on an Ubuntu VPS under Apache in the subfolder `/helpdesk` (`https://pemadam.jakarta.go.id/helpdesk/`) without using Docker.
 
 ---
 
@@ -45,17 +45,17 @@ Create a `.env` file in the root directory (`/var/www/helpdesk/.env`) and set th
 APP_NAME="IT Helpdesk"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://pemadam.jakarta.go.id/supports
+APP_URL=https://pemadam.jakarta.go.id/helpdesk
 
 # Enable SQLite Database
 DB_CONNECTION=sqlite
 DB_DATABASE=/var/www/helpdesk/database/database.sqlite
 
 # Asset URL for compiled JS/CSS
-ASSET_URL=https://pemadam.jakarta.go.id/supports
+ASSET_URL=https://pemadam.jakarta.go.id/helpdesk
 
 # Custom Subdirectory Route Prefix (Important for Inertia Client-side routing)
-ROUTE_PREFIX=supports
+ROUTE_PREFIX=helpdesk
 ```
 
 Initialize the database file and make it writable:
@@ -69,7 +69,7 @@ chown www-data:www-data /var/www/helpdesk/database/database.sqlite
 
 ## Step 4: Configure Subfolder Routing in Laravel
 
-To make all generated URLs and client-side Inertia routing work seamlessly under the `/supports` subfolder, wrap the routes inside a conditional prefix in your `routes/web.php` file:
+To make all generated URLs and client-side Inertia routing work seamlessly under the `/helpdesk` subfolder, wrap the routes inside a conditional prefix in your `routes/web.php` file:
 
 ```php
 $prefix = env('ROUTE_PREFIX', '');
@@ -124,7 +124,7 @@ Open or edit your Apache VirtualHost configuration file (usually `/etc/apache2/s
     # ... Your existing SSL configuration (Certificates, etc.)
 
     # Subfolder mapping to Laravel Public directory
-    Alias /supports /var/www/helpdesk/public
+    Alias /helpdesk /var/www/helpdesk/public
 
     <Directory /var/www/helpdesk/public>
         Options Indexes FollowSymLinks MultiViews
@@ -149,7 +149,7 @@ Inside `/var/www/helpdesk/public/.htaccess`, ensure that `RewriteBase` matches t
 ```apache
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /supports/
+    RewriteBase /helpdesk/
     
     # ... Rest of the rewrite rules
 </IfModule>

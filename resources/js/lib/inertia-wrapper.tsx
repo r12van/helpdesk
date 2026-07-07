@@ -48,14 +48,29 @@ export const Link = React.forwardRef<any, any>(({ href, ...props }, ref) => {
 
 Link.displayName = 'Link';
 
-// Custom Router Wrapper
-export const router = {
-    ...originalRouter,
-    visit: (url: any, options?: any) => originalRouter.visit(prefixUrl(url), options),
-    get: (url: any, data?: any, options?: any) => originalRouter.get(prefixUrl(url), data, options),
-    post: (url: any, data?: any, options?: any) => originalRouter.post(prefixUrl(url), data, options),
-    put: (url: any, data?: any, options?: any) => originalRouter.put(prefixUrl(url), data, options),
-    patch: (url: any, data?: any, options?: any) => originalRouter.patch(prefixUrl(url), data, options),
-    delete: (url: any, options?: any) => originalRouter.delete(prefixUrl(url), options),
-    reload: (options?: any) => originalRouter.reload(options),
-};
+// Custom Router Wrapper using Proxy to preserve prototype chain and original method bindings
+export const router = new Proxy(originalRouter, {
+    get(target, prop, receiver) {
+        if (prop === 'visit') {
+            return (url: any, options?: any) => target.visit(prefixUrl(url), options);
+        }
+        if (prop === 'get') {
+            return (url: any, data?: any, options?: any) => target.get(prefixUrl(url), data, options);
+        }
+        if (prop === 'post') {
+            return (url: any, data?: any, options?: any) => target.post(prefixUrl(url), data, options);
+        }
+        if (prop === 'put') {
+            return (url: any, data?: any, options?: any) => target.put(prefixUrl(url), data, options);
+        }
+        if (prop === 'patch') {
+            return (url: any, data?: any, options?: any) => target.patch(prefixUrl(url), data, options);
+        }
+        if (prop === 'delete') {
+            return (url: any, options?: any) => target.delete(prefixUrl(url), options);
+        }
+        
+        const value = Reflect.get(target, prop, receiver);
+        return typeof value === 'function' ? value.bind(target) : value;
+    }
+});
